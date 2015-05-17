@@ -59,7 +59,7 @@
                    (string/join (map #(hiccup/html %) forms))))))
 
 (defn for-html? [context]
-  (and (.startsWith ^String (get-in context [:request :headers "accept"] "") "text/html")
+  (and (.contains ^String (get-in context [:request :headers "accept"] "") "text/html")
        (= 200 (get-in context [:response :status]))
        (not= "text/html" (get-in context [:response :headers "Content-Type"]))))
 
@@ -114,7 +114,7 @@
                                              old-session
                                              new-session)))))]
                (cond
-                (and (or (.startsWith (get-in context [:request :headers "accept"] "")
+                (and (or (.contains (get-in context [:request :headers "accept"] "")
                                       "text/html")
                          (.startsWith (get-in context [:request :headers "accept"] "")
                                       "application/edn+html"))

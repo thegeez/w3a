@@ -1,4 +1,4 @@
-(defproject net.thegeez/w3a "0.0.2"
+(defproject net.thegeez/w3a "0.0.3"
   :url "http://thegeez.net"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
