@@ -3,12 +3,13 @@
             [com.stuartsierra.component :as component]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as string])
-  (:import [java.net URI]))
+  (:import [java.net URI]
+           [com.mchange.v2.c3p0 ComboPooledDataSource]))
 
 (defn db-url-for-heroku [db-url]
   (let [db-uri (URI. db-url)
         host (.getHost db-uri)
-                             port (.getPort db-uri)
+        port (.getPort db-uri)
         path (.getPath db-uri)
         [user password] (string/split (.getUserInfo db-uri) #":")]
     (str "jdbc:postgresql://" host ":" port path "?user=" user "&password=" password "&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory")))
@@ -28,8 +29,8 @@
         (apply < (map first migrations)))
    "Migrations should start at id 1 and be increasing"))
 
-(defn current-db-version [conn]
-  (or (try (-> (jdbc/query conn ["SELECT * FROM migration_version"])
+(defn current-db-version [spec]
+  (or (try (-> (jdbc/query spec ["SELECT * FROM migration_version"])
                first
                :version)
            (catch Exception e
@@ -37,8 +38,8 @@
              nil))
       0))
 
-(defn update-current-version [conn version]
-  (try (jdbc/update! conn :migration_version
+(defn update-current-version [spec version]
+  (try (jdbc/update! spec :migration_version
                      {:version version}
                      ["id = 0"])
        ;; might fail with the latest down migration that drops :migration_version
@@ -48,10 +49,10 @@
              (throw e))))))
 
 (defn migrate!
-  ([conn migrations] (migrate! conn migrations (first (last migrations))))
-  ([conn migrations to-version]
+  ([spec migrations] (migrate! spec migrations (first (last migrations))))
+  ([spec migrations to-version]
      (sanity-check-migrations migrations)
-     (let [current-version (current-db-version conn)
+     (let [current-version (current-db-version spec)
            todo (cond
                  (< current-version to-version)
                  (->> migrations
@@ -72,23 +73,23 @@
        (log/info :msg "Migrations to execute" :current-version current-version :to-version to-version :todo todo)
        (doseq [[migration-version migration] todo]
          (log/debug :msg "Run migration" :migration-version migration-version)
-         (try (migration conn)
-              (update-current-version conn migration-version)
+         (try (migration spec)
+              (update-current-version spec migration-version)
               (catch Exception e
                 (log/error :msg "Migration failed" :migration-version migration-version :e e :stacktrace (with-out-str (.printStackTrace e)))
                 (throw e))))
-       (update-current-version conn to-version))))
+       (update-current-version spec to-version))))
 
 (defrecord DevMigrator [database migrations]
   component/Lifecycle
   (start [component]
     (log/info :msg "Migrate database up")
-    (let [conn (:connection database)]
-      (migrate! conn migrations)
+    (let [spec (:spec database)]
+      (migrate! spec migrations)
       component))
   (stop [component]
     (log/info :msg "Migrate database down")
-    (migrate! (:connection database) migrations 0)
+    (migrate! (:spec database) migrations 0)
     component))
 
 (defn dev-migrator [migrations]
@@ -98,10 +99,10 @@
   component/Lifecycle
   (start [component]
     (log/info :msg "Migrate database up to version" :to-version to-version)
-    (let [conn (:connection database)]
+    (let [spec (:spec database)]
       (if to-version
-        (migrate! conn migrations to-version)
-        (migrate! conn migrations))
+        (migrate! spec migrations to-version)
+        (migrate! spec migrations))
       component))
   (stop [component]
     (log/info :msg "Not migrating down")
@@ -114,17 +115,20 @@
   component/Lifecycle
   (start [component]
     (log/info :msg "Starting database")
-    (let [conn {:connection (jdbc/get-connection {:connection-uri db-connect-string})
+    (let [cpds (doto (ComboPooledDataSource.)
+                 (.setJdbcUrl db-connect-string))
+          spec {:datasource cpds
                 :connection-uri db-connect-string}]
-      (try (jdbc/query conn ["VALUES 1"]) ;; derbydb
+      (try (jdbc/query spec ["VALUES 1"]) ;; derbydb
            (catch Exception e
-             (try (jdbc/query conn ["SELECT NOW()"]) ;; postgres
+             (try (jdbc/query spec ["SELECT NOW()"]) ;; postgres
                   (catch Exception e
                     (log/info :msg "DB connection failed:" :e e :stack-trace (with-out-str (.printStackTrace e)))))))
-      (assoc component :connection conn)))
+      (assoc component :spec spec)))
 
   (stop [component]
     (log/info :msg "Stopping database")
+    (.close (:datasource (:spec component)))
     component))
 
 (defn database [db-connect-string]

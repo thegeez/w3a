@@ -16,6 +16,7 @@
 
                  [org.clojure/java.jdbc "0.3.0"]
                  [postgresql/postgresql "8.4-702.jdbc4"]
+                 [com.mchange/c3p0 "0.9.2.1"]
 
                  [hiccup "1.0.5"]
                  [enlive "1.1.5"]]

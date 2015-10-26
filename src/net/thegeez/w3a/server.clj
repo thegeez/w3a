@@ -11,7 +11,7 @@
   (interceptor/interceptor
    {:name ::add-database-interceptor
     :enter (fn [context]
-             (assoc context :database (:connection database)))}))
+             (assoc context :database (:spec database)))}))
 
 (defn add-database [service-map database]
   (update-in service-map [::http/interceptors]
