@@ -12,14 +12,6 @@
             [net.thegeez.w3a.link :as link]
             [ring.util.response :as ring-response]))
 
-(defmethod pprint/simple-dispatch clojure.lang.Fn
-  [obj]
-  (pr :function-unprintable))
-
-(defmethod print-method clojure.lang.Fn
-  [o w]
-  (print-simple :function-unprintable w))
-
 (defn html-edn [context]
   (let [edn (get-in context [:response :data])
         layout-replacements {"\n" "<br/>"}
