@@ -82,18 +82,28 @@
                  accept-default
                  format-by-param
                  (as-> context
-                       (assoc context :self (link/self context)))
+                       (assoc context :self (link/self context))
+
+                       ;; mostly to be able to see flash in edn
+                       ;; response, might be moved to only be included
+                       ;; in edn outputs
+                       (assoc-in context [:response :data :flash]
+                                 (get-in context [:request :flash])))
                  (cond->
                   (.startsWith ^String (get-in context [:request :content-type] "") "application/edn")
                   (update-in [:request :params] merge (get-in context [:request :edn-params])))))
     :leave (fn [context]
-             (let [;; make sessions easier to work with
+             (let [ ;; make sessions easier to work with
                    ;; keys are kept when adding other keys, except
-                   ;; when the whole session is set to {} or nil
+                   ;; when the whole session is set to {}
+                   ;; a key is removed when it's nil
                    context (update-in context [:response :session]
                                       (fn [new-session]
                                         (let [old-session (-> (get-in context [:request :session])
-                                                              (dissoc :_flash))]
+                                                              (cond->
+                                                               ;; getting a sse response, doesn't count for seeing the flash message
+                                                               (not= (get-in context [:response :headers "Content-Type"]) "text/event-stream")
+                                                               (dissoc :_flash)))]
                                           (if (= {} new-session)
                                             {}
                                             (reduce-kv
@@ -107,7 +117,7 @@
                                              new-session)))))]
                (cond
                 (and (or (.contains (get-in context [:request :headers "accept"] "")
-                                      "text/html")
+                                    "text/html")
                          (.startsWith (get-in context [:request :headers "accept"] "")
                                       "application/edn+html"))
                      (not (.startsWith (get-in context [:response :headers "Content-Type"] "") "text/html")))
@@ -123,8 +133,7 @@
                        (update-in [:response :headers] merge
                                   {"Content-Type" "text/html"}))
                    (= 303 status)
-                   (update-in context [:response :headers] merge
-                              {"Content-Type" "text/html"})
+                   context
                    (= 400 status)
                    (let [router (some
                                  (fn [interceptor]
