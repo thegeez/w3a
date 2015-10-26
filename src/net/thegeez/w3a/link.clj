@@ -26,6 +26,13 @@
   (when-let [kw-name (get-in context [:route :route-name])]
     (link context kw-name)))
 
+(defn return-to-or-link [context link-name & opts]
+  (let [return-to (get-in context [:request :query-params :return-to])]
+    (if (and return-to
+             (seq return-to))
+      return-to
+      (apply link context link-name opts))))
+
 (defn add-breadcrumb [context title route-name]
   (update-in context [:response ::breadcrumbs]
                         (fnil conj [])
