@@ -1,9 +1,9 @@
-(defproject net.thegeez/w3a "0.0.4"
+(defproject net.thegeez/w3a "0.0.5"
   :url "http://thegeez.net"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.6.0"]
-                 [io.pedestal/pedestal.service "0.4.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
+                 [io.pedestal/pedestal.service "0.4.1"]
 
                  [io.pedestal/pedestal.jetty "0.4.0"]
 
