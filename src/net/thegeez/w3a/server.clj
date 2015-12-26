@@ -1,6 +1,7 @@
 (ns net.thegeez.w3a.server
   (:require [io.pedestal.log :as log]
             [io.pedestal.http :as http]
+            [io.pedestal.http.route :as route]
             [io.pedestal.http.body-params :as body-params]
             [io.pedestal.http.csrf :as csrf]
             [io.pedestal.http.ring-middlewares :as middlewares]
@@ -41,7 +42,7 @@
                            (middlewares/nested-params)
                            middlewares/keyword-params
                            (csrf/anti-forgery)
-                           (middlewares/flash)])))
+                           (route/method-param [:form-params "_method"])])))
 
 (defrecord PedestalComponent [service database session-options]
   component/Lifecycle
@@ -51,6 +52,15 @@
                      (add-database database)
                      (add-sessions session-options)
                      add-default-interceptors
+                     ((fn [service]
+                        (let [interceptors (::http/interceptors service)]
+                          (-> service
+                              (dissoc ::http/interceptors)
+                              ;; this is a noop when
+                              ;; ::http/interceptors set
+                              http/default-interceptors
+                              (update-in [::http/interceptors]
+                                         (partial into interceptors))))))
                      http/create-server)]
       (assoc component :server server)))
   (stop [component]
