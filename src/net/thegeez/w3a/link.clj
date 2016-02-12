@@ -1,9 +1,7 @@
 (ns net.thegeez.w3a.link
   (:require [clojure.string :as string]
-            [io.pedestal.http.route :as route]
-            [io.pedestal.http.route.definition :as definition]
             [io.pedestal.interceptor :as interceptor]
-            [io.pedestal.impl.interceptor :as impl-interceptor]
+            [io.pedestal.http.route :as route]
             [io.pedestal.log :as log]))
 
 (defn link [context kw-name & options]
@@ -17,31 +15,46 @@
            :absolute? absolute?
            :scheme scheme
            :port port
-           :query-params (cond-> query-params
-                                 (= (get-in context [:request :headers "accept"]) "application/edn+html")
-                                 (assoc :format "dev"))
+           ;; TODO also auto insert ?format= param based on current request
+           :query-params query-params
            options)))
 
 (defn self [context]
   (when-let [kw-name (get-in context [:route :route-name])]
-    (link context kw-name)))
+    (link context kw-name :query-params (get-in context [:request :query-params]))))
 
-(defn return-to-or-link [context link-name & opts]
-  (let [return-to (get-in context [:request :query-params :return-to])]
-    (if (and return-to
-             (seq return-to))
-      return-to
+(defn next-or-link [context link-name & opts]
+  (let [next (get-in context [:request :query-params :next])]
+    (if (and next
+             (seq next))
+      next
       (apply link context link-name opts))))
 
-(defn add-breadcrumb [context title route-name]
-  (update-in context [:response ::breadcrumbs]
-                        (fnil conj [])
-                        {:title title
-                         :route-name route-name
-                         :link (link context route-name :path-params (get-in context [:request :path-params]))}))
+(defn link-with-next [context link-name & opts]
+  (apply link context link-name (mapcat identity
+                                        (if-let [next (get-in context [:request :params :next])]
+                                          (assoc-in opts [:params :next] next)
+                                          opts))))
 
-(defn breadcrumb [title route-name]
+(defmulti coerce-param (fn [type v]
+                         type))
+
+(defmethod coerce-param :long
+  [_ v]
+  (try
+    (Long/parseLong v)
+    (catch Exception _ nil)))
+
+(defn coerce-path-params [name+type]
   (interceptor/interceptor
-   {:name ::breadcrumb
+   {:name ::coerce-path-params
     :enter (fn [context]
-             (add-breadcrumb context title route-name))}))
+             (update-in context [:request :path-params]
+                        (fn [params]
+                          (reduce-kv
+                           (fn [m k v]
+                             (if-let [type (get name+type k)]
+                               (assoc m k (coerce-param type v))
+                               (assoc m k v)))
+                           {}
+                           params))))}))

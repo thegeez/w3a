@@ -1,4 +1,4 @@
-(defproject net.thegeez/w3a "0.0.5"
+(defproject net.thegeez/w3a "0.0.6"
   :url "http://thegeez.net"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -21,10 +21,13 @@
                  [hiccup "1.0.5"]
                  [enlive "1.1.5"]
 
+                 [org.webjars/bootstrap "3.3.4"]
+                 [org.webjars/jquery "1.11.1"]
+
                  [environ "1.0.1"]
 
-                 [clj-http "2.0.0"]
-                 [clj-oauth "1.5.3"]]
+                 [fipp "0.6.4"] ;; faster pprint
+                 ]
     :resource-paths ["config", "resources"]
     :profiles {:dev {:source-paths ["dev"]
                      :dependencies [[ns-tracker "0.2.2"]

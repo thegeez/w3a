@@ -1,6 +1,5 @@
-(ns net.thegeez.w3a.interceptor
-  (:require [io.pedestal.log :as log]
-            [io.pedestal.interceptor :as interceptor]))
+(ns net.thegeez.w3a.context
+  (:require [io.pedestal.impl.interceptor :as impl-interceptor]))
 
 ;; from liberator:
 ;; A more sophisticated update of the request than a simple merge
@@ -25,3 +24,14 @@
    (and (vector? curr) (coll? newval)) (into curr newval)
    (and (set? curr) (coll? newval)) (set (concat curr newval))
    :otherwise newval))
+
+
+(defn terminate
+  ([context]
+     (impl-interceptor/terminate context))
+  ([context status]
+     (impl-interceptor/terminate
+      (combine context
+               {:response {:status status}}))))
+
+;; TODO add (flash ..) (status ..) (data ..) etc

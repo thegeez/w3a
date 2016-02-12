@@ -5,6 +5,8 @@
             [io.pedestal.interceptor :as interceptor]
             [io.pedestal.log :as log]
             [io.pedestal.test :as test]
+            [net.cgrand.enlive-html :as html]
+            [kerodon.core :as kerodon]
             [peridot.request]))
 
 ;; make ring mock not munge edn
@@ -28,11 +30,7 @@
 ;; allow to find the csrf-token to use in testing
 (defn surface-csrf-token [system]
   (update-in system [:server :service ::http/interceptors]
-             (fn [interceptors]
-               (vec (apply concat (for [i interceptors]
-                                    (if (= (:name i) :io.pedestal.http.route/router)
-                                      [i csrf-token-in-response-header]
-                                      [i])))))))
+             conj csrf-token-in-response-header))
 
 (defn system->ring-handler [system]
   (let [system (-> system
@@ -40,6 +38,7 @@
                    (cond->
                     (.startsWith ^String (get-in system [:db :db-connect-string] "")
                                  "jdbc:derby:memory:")
+                    ;; TODO make this an explicit component
                     (update-in [:db :db-connect-string]
                                #(str "jdbc:derby:memory:" (gensym "pertestdb") (subs % (count "jdbc:derby:memory:")))))
                    (dissoc :jetty))
@@ -72,3 +71,21 @@
                                  (catch Exception e
                                    (log/info :unreadable (get response :body))
                                    (throw e)))))))))
+
+
+;; broken in kerodon for text only links when links with nested html
+;; on a page
+(defn follow [state link]
+  (kerodon/follow state (if (string? link)
+                          (html/pred #(= (first (:content %)) link))
+                          link)))
+
+;; TODO make same shape as kerodon testers
+(defn at? [res url]
+  (clojure.test/is (= url (str (get-in res [:request :uri])
+                               ;; only check the query string as well
+                               ;; when specified by user
+                               (when (.contains url "?")
+                                 (when-let [query-string (get-in res [:request :query-string])]
+                                   (str "?" query-string))))))
+  res)

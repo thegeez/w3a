@@ -1,18 +1,24 @@
-(ns net.thegeez.w3a.system.sql-database
+(ns net.thegeez.w3a.components.sql-database.migrator
   (:require [io.pedestal.log :as log]
             [com.stuartsierra.component :as component]
             [clojure.java.jdbc :as jdbc]
-            [clojure.string :as string])
-  (:import [java.net URI]
-           [com.mchange.v2.c3p0 ComboPooledDataSource]))
+            [clojure.string :as string]))
 
-(defn db-url-for-heroku [db-url]
-  (let [db-uri (URI. db-url)
-        host (.getHost db-uri)
-        port (.getPort db-uri)
-        path (.getPath db-uri)
-        [user password] (string/split (.getUserInfo db-uri) #":")]
-    (str "jdbc:postgresql://" host ":" port path "?user=" user "&password=" password "&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory")))
+(def version-migration
+  (let [table :migration_version]
+    {:up (fn [db]
+           (jdbc/db-do-commands
+            db (jdbc/create-table-ddl
+                table
+                [:id :int]
+                [:version :int]))
+           (jdbc/insert! db
+                         table {:id 0
+                                :version 1}))
+     :down (fn [db]
+             (jdbc/db-do-commands
+              db (jdbc/drop-table-ddl
+                  table)))}))
 
 (defn sanity-check-migrations [migrations]
   (assert (every? (fn [m]
@@ -70,7 +76,7 @@
                                     (< to-version migration-version)))
                       (map (juxt first (comp :down second))))
                  :else nil)]
-       (log/info :msg "Migrations to execute" :current-version current-version :to-version to-version :todo todo)
+       (log/info :msg "Migrations to execute" :current-version current-version :to-version to-version)
        (doseq [[migration-version migration] todo]
          (log/debug :msg "Run migration" :migration-version migration-version)
          (try (migration spec)
@@ -110,26 +116,3 @@
 
 (defn migrator [migrations migrate-to-version]
   (map->Migrator {:migrations migrations :to-version migrate-to-version}))
-
-(defrecord Database [db-connect-string]
-  component/Lifecycle
-  (start [component]
-    (log/info :msg "Starting database")
-    (let [cpds (doto (ComboPooledDataSource.)
-                 (.setJdbcUrl db-connect-string))
-          spec {:datasource cpds
-                :connection-uri db-connect-string}]
-      (try (jdbc/query spec ["VALUES 1"]) ;; derbydb
-           (catch Exception e
-             (try (jdbc/query spec ["SELECT NOW()"]) ;; postgres
-                  (catch Exception e
-                    (log/info :msg "DB connection failed:" :e e :stack-trace (with-out-str (.printStackTrace e)))))))
-      (assoc component :spec spec)))
-
-  (stop [component]
-    (log/info :msg "Stopping database")
-    (.close (:datasource (:spec component)))
-    component))
-
-(defn database [db-connect-string]
-  (map->Database {:db-connect-string db-connect-string}))

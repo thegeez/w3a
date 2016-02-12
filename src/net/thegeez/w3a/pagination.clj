@@ -3,15 +3,18 @@
             [net.cgrand.enlive-html :as html]
             [net.thegeez.w3a.link :as link]))
 
-(defn pagination-params [context]
-  (let [page (try (Long/parseLong (get-in context [:request :params :page]))
-                  (catch Exception _
-                    1))
-        limit (try (Long/parseLong (get-in context [:request :params :limit]))
-                   (catch Exception _
-                     10))]
-    {:page page
-     :limit limit}))
+(defn pagination-params
+  ([context]
+     (pagination-params context {}))
+  ([context options]
+     (let [page (try (Long/parseLong (get-in context [:request :params :page]))
+                     (catch Exception _
+                       (get options :page 1)))
+           limit (try (Long/parseLong (get-in context [:request :params :limit]))
+                      (catch Exception _
+                        (get options :limit 10)))]
+       {:page page
+        :limit limit})))
 
 (defn links [context kw-name pagination count]
   (let [{:keys [page limit]} pagination
