@@ -70,18 +70,8 @@
   (start [component]
     (log/info :msg "Starting Pedestal component" :service-env (:env service))
     (let [server (-> service
+                     (update-in [::http/interceptors] (fnil vec []))
                      (add-component-interceptors component)
-                     ;; (add-sessions session-options)
-                     
-                     ;; ((fn [service]
-                     ;;    (let [interceptors (::http/interceptors service)]
-                     ;;      (-> service
-                     ;;          (dissoc ::http/interceptors)
-                     ;;          ;; this is a noop when
-                     ;;          ;; ::http/interceptors set
-                     ;;          http/default-interceptors
-                     ;;          (update-in [::http/interceptors]
-                     ;;                     (partial into interceptors))))))
                      (add-default-interceptors session-options)
                      http/create-server)]
       (assoc component :server server)))
