@@ -2,7 +2,7 @@
 
 Library for web applications on top of Pedestal
 
-More information on the blogpost: http://thegeez.net/2015/05/16/w3a_web_application_pedestal.html
+More information on the blogpost: http://thegeez.net/2016/02/15/w3a_pedestal_walkthrough.html
 
 ## About
 
@@ -15,7 +15,7 @@ Gijs Stuurman / [@thegeez][twt] / [Blog][blog] / [GitHub][github]
 
 ## License
 
-Copyright © 2015 Gijs Stuurman
+Copyright © 2016 Gijs Stuurman
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
