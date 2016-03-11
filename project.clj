@@ -1,4 +1,4 @@
-(defproject net.thegeez/w3a "0.0.8"
+(defproject net.thegeez/w3a "0.0.9"
   :url "http://thegeez.net"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -27,7 +27,9 @@
                  [environ "1.0.1"]
 
                  [fipp "0.6.4"] ;; faster pprint
-                 ]
+
+                 [clj-http "2.0.0"]
+                 [clj-oauth "1.5.3"]]
     :resource-paths ["config", "resources"]
     :profiles {:dev {:source-paths ["dev"]
                      :dependencies [[ns-tracker "0.2.2"]

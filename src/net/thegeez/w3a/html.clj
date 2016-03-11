@@ -12,7 +12,8 @@ template-fn: context -> string | seq of strings (from enlive)
 noop when request is not for html"
   [status template-fn]
   (interceptor/interceptor
-   {:leave (fn [context]
+   {:name (str "net.thegeez.w3a.html/for-html " status)
+    :leave (fn [context]
              (if (and (.contains ^String (get-in context [:request :headers "accept"] "") "text/html")
                       (not= "text/html" (get-in context [:response :headers "Content-Type"])))
                (cond-> context

@@ -4,7 +4,8 @@
 (defn for-edn
   [template-fn]
   (interceptor/interceptor
-   {:leave (fn [context]
+   {:name ::for-edn
+    :leave (fn [context]
              (if (and (.contains ^String (get-in context [:request :headers "accept"] "") "application/edn")
                       (not= "application/edn" (get-in context [:response :headers "Content-Type"])))
                (-> context
