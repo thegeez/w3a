@@ -93,7 +93,7 @@
     (log/info :msg "Stopping jetty component")
     (when-let [server (:server component)]
       (http/stop (:server server)))
-    (dissoc component :server)))
+    (assoc component :server nil)))
 
 (defn jetty-component []
   (map->JettyComponent {}))
